@@ -141,13 +141,32 @@ async function login(){
         })
     });
 
-    const data = await res.json();
+   const data = await res.json();
 
-    document.getElementById('loginResult').innerText = data.message;
+const trollMessages = [
+    "Skill issue detected 😭",
+    "Mitron... password galat hai 👀",
+    "Access denied by Vishwaguru 💀",
+    "Nice try hacker ji 😈",
+    "Authentication failed successfully 😂",
+    "Aapka password jumla nikla 😭",
+    "Server bhi confuse ho gaya 😵",
+    "Error 404: Skills not found 💀"
+];
 
-    if(data.success){
-        document.getElementById('loginResult').innerText += " | Cookie Generated";
-    }
+if(data.success){
+
+    document.getElementById('loginResult').innerText =
+    data.message + " | Cookie Generated";
+
+}else{
+
+    const randomMessage =
+    trollMessages[Math.floor(Math.random() * trollMessages.length)];
+
+    document.getElementById('loginResult').innerText =
+    randomMessage;
+}
 }
 
 async function submitFlags(){
