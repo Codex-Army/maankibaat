@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Modi Product</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h1>Modi Ka Dimag</h1>
+
+<img src="https://preview.redd.it/einstein-damodar-das-modi-v0-mq86ip3vqltg1.jpeg?width=640&crop=smart&auto=webp&s=d71e6fd3d34e1b3bb88aed97fa8d22042479f136">
+
+<div class="card">
+
+<h2>Price: ₹7 Crore</h2>
+
+<p>Hit ho ke show your price tampering skills.</p>
+
+<button onclick="buy()">Buy Now</button>
+
+<div class="result" id="buyResult"></div>
+
+<audio controls>
+<source src="https://www.myinstants.com/media/sounds/is-sajjan-ko-kya-takleef-hai-bhai.mp3" type="audio/mpeg">
+</audio>
+
+</div>
+
+</div>
+
+<script>
+
+async function buy(){
+
+    const res = await fetch('/buy',{
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            product:'Modi Ka Dimag',
+            price:70000000
+        })
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+        document.getElementById('buyResult').innerText = data.flag;
+    }else{
+        document.getElementById('buyResult').innerText = data.message;
+    }
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Mitron Market</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="/js/modi_hai_to_admin_hai.js"></script>
+
+<!--
+india123
+password123
+amit123
+admin123
+mitron@2026
+-->
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>Mitron Market</h1>
+
+<img src="https://akm-img-a-in.tosshub.com/indiatoday/images/story/202405/pm-modi-smiling-064650291-16x9_0.jpeg?VersionId=jB9Lbi.Ok_FF1q5NWLNuMtK9MVa7EfRp&size=690:388">
+
+<div class="card">
+
+<h2>Login</h2>
+
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<div class="result" id="loginResult"></div>
+
+<audio controls>
+<source src="https://www.myinstants.com/media/sounds/modi-modi-modi-modi-kids.mp3" type="audio/mpeg">
+</audio>
+
+</div>
+
+<div class="card">
+<h2>User Reviews</h2>
+
+<p><b>amit_user</b>: best website ever</p>
+<p><b>bhakt_420</b>: ache din aa gaye</p>
+<p><b>modi_fanboy</b>: mast site</p>
+
+</div>
+
+<div class="card">
+
+<h2>Submit Flags</h2>
+
+<p>⚠️ Put ALL flags at a time to claim reward.</p>
+
+<input type="text" id="flag1" placeholder="Enter First Flag">
+<input type="text" id="flag2" placeholder="Enter Second Flag">
+
+<button onclick="submitFlags()">Submit Flags</button>
+
+<div class="result" id="flagResult"></div>
+
+</div>
+
+</div>
+
+<script>
+
+async function login(){
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    const res = await fetch('/login',{
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            username,
+            password
+        })
+    });
+
+    const data = await res.json();
+
+    document.getElementById('loginResult').innerText = data.message;
+
+    if(data.success){
+        document.getElementById('loginResult').innerText += " | Cookie Generated";
+    }
+}
+
+async function submitFlags(){
+
+    const flag1 = document.getElementById('flag1').value;
+    const flag2 = document.getElementById('flag2').value;
+
+    const res = await fetch('/submit-flags',{
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            flag1,
+            flag2
+        })
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+        document.getElementById('flagResult').innerHTML =
+        "Reward Code: <br><br>" + data.reward;
+    }else{
+        document.getElementById('flagResult').innerText = data.message;
+    }
+}
+
+</script>
+
+</body>
+</html>
