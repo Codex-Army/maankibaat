@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Message Vault | Mitron Market</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: radial-gradient(ellipse at top, #351010 0%, #100909 42%, #050505 100%); color:#f5eeee; font-family:Arial,Helvetica,sans-serif; }
+    .vault { width:min(92%,850px); margin:0 auto; padding:32px 0 50px; }
+    h1 { color:#ff3434; text-transform:uppercase; letter-spacing:2px; }
+    .subtitle { color:#c7b8b8; line-height:1.6; }
+    .message-card { background:linear-gradient(145deg,#191313,#0d0b0b); border:1px solid #512525; border-radius:14px; padding:22px; margin:18px 0; }
+    .message-card h2 { color:#ff6464; margin-top:0; }
+    .message-card p { color:#ddd; line-height:1.6; }
+    .message-card button { width:100%; }
+    .output { margin-top:14px; padding:13px; border:1px solid #673030; border-radius:8px; color:#ffd0d0; white-space:pre-wrap; overflow-wrap:anywhere; display:none; }
+    .output.visible { display:block; }
+    .hint { font-size:13px; color:#c5a9a9; }
+    a { color:#ff8585; }
+  </style>
+</head>
+<body>
+  <main class="vault">
+    <p><a href="/">← Back to Mitron Market</a></p>
+    <h1>📨 Secure Message Vault</h1>
+    <p class="subtitle">Internal staff messages. Some user IDs may be outdated. If a message fails to load, inspect the request in Burp Suite and investigate the object ID.</p>
+
+    <section class="message-card">
+      <h2>Message for Amit</h2>
+      <p>Recipient: amit · Staff ID: 101</p>
+      <button type="button" onclick="loadMessage('101','amitResult')">OPEN MESSAGE</button>
+      <div id="amitResult" class="output" role="status"></div>
+    </section>
+
+    <section class="message-card">
+      <h2>Message for Yogi</h2>
+      <p>Recipient: yogi · Staff ID: 102</p>
+      <button type="button" onclick="loadMessage('102','yogiResult')">OPEN MESSAGE</button>
+      <div id="yogiResult" class="output" role="status"></div>
+    </section>
+
+    <section class="message-card">
+      <h2>Message for Gyanesh</h2>
+      <p>Recipient: gyanesh · Staff ID: 420</p>
+      <p class="hint">Hint: The saved recipient ID might be incorrect. Inspect the request in Burp Suite and try numeric <code>userId</code> values between <strong>1 and 500</strong>.</p>
+      <button type="button" onclick="loadMessage('420','ganeshResult')">OPEN GYANESH'S MESSAGE</button>
+      <div id="ganeshResult" class="output" role="status"></div>
+    </section>
+  </main>
+
+  <!-- Play “Waah Modiji Waah” when this page loads. Browsers may block audible autoplay. -->
+  <audio id="secureMessageAudio" preload="auto" autoplay playsinline
+    src="https://www.myinstants.com/media/sounds/waah-modiji-waah.mp3"></audio>
+
+  <script>
+    (() => {
+      const audio = document.getElementById('secureMessageAudio');
+      if (!audio) return;
+      const startAudio = () => {
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          const retry = () => {
+            audio.play().catch(() => {});
+            window.removeEventListener('pointerdown', retry);
+            window.removeEventListener('keydown', retry);
+          };
+          window.addEventListener('pointerdown', retry, { once: true });
+          window.addEventListener('keydown', retry, { once: true });
+        });
+      };
+      if (audio.readyState >= 2) startAudio();
+      else audio.addEventListener('canplay', startAudio, { once: true });
+    })();
+
+    async function loadMessage(userId, targetId) {
+      const target = document.getElementById(targetId);
+      target.textContent = 'Loading message...';
+      target.classList.add('visible');
+      try {
+        const response = await fetch('/api/secure-message?userId=' + encodeURIComponent(userId));
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          target.textContent = data.message || 'Message unavailable.';
+          return;
+        }
+        target.textContent = data.message.title + '\nRecipient: ' + data.message.username + '\n\n' + data.message.body;
+      } catch (e) {
+        target.textContent = 'Connection error. Please retry.';
+      }
+    }
+  </script>
+</body>
+</html>

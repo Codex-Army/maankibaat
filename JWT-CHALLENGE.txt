@@ -1,0 +1,30 @@
+Mitron Market CTF — JWT Secret + Signature Challenge
+====================================================
+
+Goal: turn the normal user's JWT into a valid admin JWT. This challenge is intentionally vulnerable because the signing secret is exposed in a client-side JavaScript file. Use only in this authorized CTF.
+
+Credentials
+-----------
+Username: amit
+Password: mitron@2026
+
+Procedure
+---------
+1. Log in, then capture a request to GET /admin in Burp Suite.
+2. Copy the value of the `token` cookie and open it in Burp's JWT Editor or https://jwt.io/.
+3. Inspect the referenced JavaScript asset: /js/modi_hai_to_admin_hai.js. It contains the CTF signing-secret clue.
+4. Keep the algorithm as HS256. Change the payload claim from `"role":"user"` to `"role":"admin"` (keep the username claim).
+5. Enter the discovered secret in the HMAC/secret field and re-sign the JWT. Merely editing the payload without re-signing will fail signature verification.
+6. Replace the `token` cookie in the GET /admin request with the newly signed JWT and send the request.
+7. A correctly signed token with role=admin opens the admin page and reveals flag 2. A valid token with role=user shows the not-admin page. An invalid signature is rejected.
+
+Learning objectives
+-------------------
+- JWT header, payload, and signature
+- HS256 HMAC signing and signature verification
+- Role-based authorization
+- Why hardcoding/exposing a JWT signing secret in client-side code is a serious vulnerability
+
+Safety note
+-----------
+This is deliberately vulnerable training code. Never expose JWT signing secrets in browser JavaScript or use this setup for production authentication.

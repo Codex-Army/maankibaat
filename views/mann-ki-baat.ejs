@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Mann Ki Baat | Mitron Market XSS Lab</title><link rel="stylesheet" href="/css/style.css"><style>
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#351010 0%,#100909 45%,#050505 100%);color:#f5eeee;font-family:Arial,Helvetica,sans-serif}.wrap{width:min(92%,850px);margin:auto;padding:30px 0 50px}.back{color:#ff8585}.hero,.panel{background:linear-gradient(145deg,#191313,#0d0b0b);border:1px solid #512525;border-radius:14px;padding:24px;margin:18px 0}.eyebrow{letter-spacing:3px;color:#ff7777;font-size:12px;font-weight:bold}h1{color:#ff3434;text-transform:uppercase;letter-spacing:1px;font-size:clamp(30px,5vw,46px);margin:10px 0}.muted{color:#c7b8b8;line-height:1.6}.field{display:block;width:100%;margin:12px 0;padding:13px;background:#080707;color:white;border:1px solid #493030;border-radius:8px;font-size:15px}.btn{width:100%;padding:14px;margin-top:10px;background:linear-gradient(90deg,#a10e19,#ed2525);color:#fff;font-weight:bold;border:0;border-radius:8px;cursor:pointer}.comment{border-bottom:1px solid #302020;padding:14px 0;overflow-wrap:anywhere}.comment:last-child{border-bottom:0}.comment b{color:#ff7474}.flag{display:none;margin-top:16px;padding:16px;border:1px solid #36d98a;border-radius:9px;background:#0a2518;color:#a7ffd0;overflow-wrap:anywhere}.flag.visible{display:block}.hint{font-size:13px;color:#c5a9a9}
+</style></head><body><main class="wrap"><a class="back" href="/">← Back to Mitron Market</a>
+<section class="hero"><div class="eyebrow">JANATA KI AAWAAZ</div><h1>🎙️ Mann Ki Baat</h1><p class="muted">Mitron, apna feedback dijiye! Yogi, Amit aur Ganesh ke sample comments bhi dekhiye. Is isolated CTF exercise mein aapka feedback isi browser mein save hota hai.</p></section>
+<section class="panel"><h2>📝 Apna Feedback Dijiye</h2><form id="feedbackForm"><input class="field" id="name" maxlength="40" placeholder="Aapka naam" required><textarea class="field" id="feedback" rows="4" maxlength="500" placeholder="Apna feedback likhiye..." required></textarea><button class="btn" type="submit">SUBMIT FEEDBACK</button></form><p class="hint">CTF hint: investigate how your own saved feedback is rendered after submission. Do not enter real personal information.</p></section>
+<section class="panel"><h2>💬 Feedback Board</h2><div id="comments"></div><div id="flag" class="flag" role="status" aria-live="polite"></div></section></main>
+<script>
+const KEY='mitron_mann_ki_baat_feedback_v1';
+const starter=[{name:'Yogi',feedback:'Vikas bhi, feedback bhi! 🚩'},{name:'Amit',feedback:'Website ka security audit hona chahiye. 🔐'},{name:'Ganesh',feedback:'Main ek secret message chhod kar gaya hoon. 👀'}];
+function getEntries(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch{return []}}
+function render(){const comments=document.getElementById('comments');const entries=starter.concat(getEntries());
+  // INTENTIONAL CTF VULNERABILITY: user-controlled fields are inserted as HTML.
+  comments.innerHTML=entries.map(item=>`<div class="comment"><b>${item.name}</b><div>${item.feedback}</div></div>`).join('');
+}
+window.xssSolved=async function(){const box=document.getElementById('flag');try{const response=await fetch('/api/xss-flag');const data=await response.json();box.textContent='🎉 Stored XSS triggered! Flag: '+data.flag;}catch{box.textContent='XSS triggered, but flag service could not be reached.';}box.classList.add('visible');};
+// CTF helper: when a submitted XSS payload executes alert(), automatically reveal the challenge flag.
+const nativeAlert=window.alert.bind(window);
+window.alert=function(...args){nativeAlert(...args);window.xssSolved();};
+document.getElementById('feedbackForm').addEventListener('submit',event=>{event.preventDefault();const name=document.getElementById('name').value.trim();const feedback=document.getElementById('feedback').value;const entries=getEntries();entries.push({name,feedback});localStorage.setItem(KEY,JSON.stringify(entries));render();event.target.reset();});render();
+</script></body></html>

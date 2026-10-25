@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090909">
+
+  <title>Mitron Market | Official Portal</title>
+
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/modi_hai_to_admin_hai.js" defer></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at top, #351010 0%, #100909 42%, #050505 100%);
+      color: #f5eeee;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .container {
+      width: min(92%, 760px);
+      margin: 0 auto;
+      padding: 38px 0 50px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      color: #ff7777;
+      letter-spacing: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: clamp(36px, 7vw, 58px);
+      margin: 0 0 10px;
+      color: #ff3434;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 22px #ff222255;
+    }
+
+    .subtitle {
+      color: #b9aaaa;
+      margin-bottom: 28px;
+      font-size: 14px;
+    }
+
+    .hero-image {
+      display: block;
+      width: 100%;
+      max-width: 620px;
+      height: auto;
+      max-height: 350px;
+      object-fit: cover;
+      margin: 0 auto 28px;
+      border: 1px solid #7d3030;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px #0009;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #191313, #0d0b0b);
+      border: 1px solid #512525;
+      border-radius: 14px;
+      padding: 26px;
+      margin: 20px auto;
+      text-align: left;
+      box-shadow: 0 8px 30px #0005;
+    }
+
+    .card h2 {
+      color: #ff5252;
+      margin: 0 0 18px;
+      font-size: 21px;
+    }
+
+    .card p {
+      color: #d7cbcb;
+      line-height: 1.6;
+    }
+
+    .card input {
+      display: block;
+      width: 100%;
+      margin: 12px 0;
+      padding: 14px;
+      background: #080707;
+      color: #fff;
+      border: 1px solid #493030;
+      border-radius: 8px;
+      outline: none;
+      font-size: 15px;
+    }
+
+    .card input:focus {
+      border-color: #ff4545;
+      box-shadow: 0 0 0 3px #ff45451c;
+    }
+
+    .card button {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      background: linear-gradient(90deg, #a10e19, #ed2525);
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+      letter-spacing: 1px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform .2s, filter .2s;
+    }
+
+    .card button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.15);
+    }
+
+    .card button:disabled {
+      opacity: .6;
+      cursor: wait;
+      transform: none;
+    }
+
+    .result {
+      display: none;
+      margin-top: 16px;
+      padding: 14px;
+      background: #090707;
+      border: 1px solid #532727;
+      border-radius: 8px;
+      color: #ffb1b1;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .review {
+      padding: 12px 0;
+      border-bottom: 1px solid #302020;
+    }
+
+    .review:last-child {
+      border-bottom: none;
+    }
+
+    .review b {
+      color: #ff7474;
+    }
+
+    .notice {
+      color: #ffb9b9 !important;
+      font-size: 13px;
+      background: #350e0e55;
+      border: 1px dashed #793131;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    footer {
+      color: #776969;
+      font-size: 12px;
+      margin-top: 28px;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 520px) {
+      .container {
+        width: 92%;
+        padding-top: 26px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .hero-image {
+        max-height: 250px;
+      }
+    }
+  </style>
+
+  <!--
+  ====================================================
+  TEMP PASSWORD BACKUP
+  CTF SOURCE-CODE RECONNAISSANCE CHALLENGE
+  Developer: MAGICIAN
+  ====================================================
+
+  india123
+  password123
+  amit123
+  admin123
+  hello123
+  qwerty123
+  welcome123
+  test123
+  guest123
+  root123
+  mitron123
+  india@123
+  admin@123
+  system123
+  support123
+  backend123
+  frontend123
+  manager123
+  hacker123
+  secure123
+  developer123
+  superadmin123
+  letmein123
+  changeme123
+  modiji123
+  bharat123
+  election123
+  server123
+  database123
+  mongodb123
+  mysql123
+  jwtsecret123
+  cookie123
+  token123
+  access123
+  temporary123
+  testing123
+  debug123
+  production123
+  password@123
+  admin@2026
+  india@2026
+  amit@2026
+  mitron@2026
+  modi_hai_to_admin_hai
+  supersecure123
+  national123
+  vishwaguru123
+  masterkey123
+  finalpassword123
+
+  ====================================================
+  NOTE:
+  One of these passwords may still work.
+  ====================================================
+  -->
+</head>
+
+<body>
+  <main class="container">
+
+    <div class="eyebrow">THE OFFICIAL CTF PORTAL</div>
+
+    <h1>Mitron Market</h1>
+
+    <p class="subtitle">
+      Welcome, Mitron. Your investigation starts here.
+    </p>
+
+    <img
+      class="hero-image"
+      src="https://akm-img-a-in.tosshub.com/indiatoday/images/story/202405/pm-modi-smiling-064650291-16x9_0.jpeg?VersionId=jB9Lbi.Ok_FF1q5NWLNuMtK9MVa7EfRp&size=690:388"
+      alt="Mitron Market featured image"
+      onerror="this.style.display='none'"
+    >
+
+    <!-- Hidden audio: it plays when Login is clicked. -->
+    <audio
+      id="memeAudio"
+      preload="auto"
+      src="https://www.myinstants.com/media/sounds/modi-modi-modi-modi-kids.mp3">
+    </audio>
+
+    <section class="card">
+      <h2>🔐 Staff Login</h2>
+
+      <form id="loginForm">
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Username"
+          autocomplete="username"
+          required
+        >
+
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit" id="loginButton">LOGIN</button>
+      </form>
+
+      <div class="result" id="loginResult" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="card">
+      <h2>📨 Secure Message Vault</h2>
+      <p>Some messages are restricted to specific staff IDs. Investigate the requests carefully, Mitron.</p>
+      <a href="/secure-message" style="display:block;text-align:center;padding:14px;background:linear-gradient(90deg,#a10e19,#ed2525);color:#fff;text-decoration:none;font-weight:bold;border-radius:8px;">OPEN SECURE MESSAGES</a>
+    </section>
+
+    <section class="card">
+      <h2>⭐ Public Reviews</h2>
+
+      <div class="review">
+        <b>amit</b>: best website ever
+      </div>
+
+      <div class="review">
+        <b>bhakt_420</b>: ache din aa gaye
+      </div>
+
+      <div class="review">
+        <b>modi_fanboy</b>: mast site
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🎙️ Mann Ki Baat — Janata Ka Feedback</h2>
+      <p>Try the browser-local Stored XSS training challenge. Your test feedback stays in your browser.</p>
+      <a href="/mann-ki-baat" style="display:block;text-align:center;padding:14px;background:linear-gradient(90deg,#a10e19,#ed2525);color:#fff;text-decoration:none;font-weight:bold;border-radius:8px;">OPEN XSS CHALLENGE</a>
+    </section>
+
+    <section class="card">
+      <h2>💻 Yogi Ji Ki Free Laptop Yojana</h2>
+      <p>Claim one free laptop. Can you find the race condition and make the claim counter exceed one?</p>
+      <a href="/yogi-laptop" style="display:block;text-align:center;padding:14px;background:linear-gradient(90deg,#a10e19,#ed2525);color:#fff;text-decoration:none;font-weight:bold;border-radius:8px;">OPEN RACE CONDITION CHALLENGE</a>
+    </section>
+
+    <section class="card">
+      <h2>🏁 Flag Submission</h2>
+      <p class="notice">
+        ⚠️ Solve all 5 challenges. Each input below tells you which challenge's flag belongs there.
+      </p>
+
+      <form id="flagForm">
+        <label for="flag1"><b>Flag 1 — Modi Ka Dimag (Price Manipulation)</b></label>
+        <input type="text" id="flag1" placeholder="Paste the flag from /modi" autocomplete="off" required>
+
+        <label for="flag2"><b>Flag 2 — Admin Access (JWT)</b></label>
+        <input type="text" id="flag2" placeholder="Paste the flag from the admin challenge" autocomplete="off" required>
+
+        <label for="flag3"><b>Flag 3 — Secure Message Vault (IDOR, userId 420)</b></label>
+        <input type="text" id="flag3" placeholder="Paste the flag from Gyanesh's private message" autocomplete="off" required>
+
+        <label for="flag4"><b>Flag 4 — Mann Ki Baat (Stored XSS)</b></label>
+        <input type="text" id="flag4" placeholder="Paste the flag from the XSS challenge" autocomplete="off" required>
+
+        <label for="flag5"><b>Flag 5 — Yogi Ji's Free Laptop (Race Condition)</b></label>
+        <input type="text" id="flag5" placeholder="Paste the flag after multiple laptop claims" autocomplete="off" required>
+
+        <button type="submit" id="flagButton">SUBMIT ALL 5 FLAGS</button>
+      </form>
+
+      <div class="result" id="flagResult" role="status" aria-live="polite"></div>
+    </section>
+
+    <footer>
+      MITRON MARKET // CTF TRAINING ENVIRONMENT
+    </footer>
+
+  </main>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const loginButton = document.getElementById("loginButton");
+    const loginResult = document.getElementById("loginResult");
+    const memeAudio = document.getElementById("memeAudio");
+
+    const flagForm = document.getElementById("flagForm");
+    const flagButton = document.getElementById("flagButton");
+    const flagResult = document.getElementById("flagResult");
+
+    const trollMessages = [
+      "Skill issue detected 😭",
+      "Mitron... password galat hai 👀",
+      "Access denied by Vishwaguru 💀",
+      "Nice try hacker ji 😈",
+      "Authentication failed successfully 😂",
+      "Aapka password jumla nikla 😭",
+      "Server bhi confuse ho gaya 😵",
+      "Error 404: Skills not found 💀"
+    ];
+
+    function showResult(element, message) {
+      element.textContent = message;
+      element.classList.add("visible");
+    }
+
+    function randomTroll() {
+      return trollMessages[
+        Math.floor(Math.random() * trollMessages.length)
+      ];
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      /*
+       * Start audio directly from the user's click.
+       * No visible audio player is required.
+       */
+      memeAudio.currentTime = 0;
+      memeAudio.play().catch(function () {
+        showResult(
+          loginResult,
+          "Audio could not be loaded. Check your internet connection."
+        );
+      });
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      loginButton.disabled = true;
+      loginButton.textContent = "AUTHENTICATING...";
+
+      try {
+        const response = await fetch("/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showResult(loginResult, "Login successful! Redirecting to admin...");
+          // The JWT is stored in an HttpOnly cookie by /login; do not put it in the URL.
+          window.location.assign("/admin");
+          return;
+        } else {
+          showResult(loginResult, randomTroll());
+        }
+      } catch (error) {
+        showResult(
+          loginResult,
+          "Connection error. Check that the CTF server is running."
+        );
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "LOGIN";
+      }
+    });
+
+    flagForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const flag1 = document.getElementById("flag1").value.trim();
+      const flag2 = document.getElementById("flag2").value.trim();
+      const flag3 = document.getElementById("flag3").value.trim();
+      const flag4 = document.getElementById("flag4").value.trim();
+      const flag5 = document.getElementById("flag5").value.trim();
+
+      flagButton.disabled = true;
+      flagButton.textContent = "VERIFYING FLAGS...";
+
+      try {
+        const response = await fetch("/submit-flags", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ flag1, flag2, flag3, flag4, flag5 })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          showResult(
+            flagResult,
+            "🎉 ALL 5 FLAGS VERIFIED!\n\nReward Code: " + data.reward + "\n\nMASTER FLAG: " + data.masterFlag
+          );
+        } else {
+          showResult(
+            flagResult,
+            data.message || "Wrong flags! Try again, hacker ji 😈"
+          );
+        }
+      } catch (error) {
+        showResult(
+          flagResult,
+          "Connection error. Check that the CTF server is running."
+        );
+      } finally {
+        flagButton.disabled = false;
+        flagButton.textContent = "SUBMIT ALL 5 FLAGS";
+      }
+    });
+  </script>
+</body>
+</html>

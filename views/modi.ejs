@@ -1,0 +1,73 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Modi Product</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h1>Modi Ka Dimag</h1>
+
+<img src="https://preview.redd.it/einstein-damodar-das-modi-v0-mq86ip3vqltg1.jpeg?width=640&crop=smart&auto=webp&s=d71e6fd3d34e1b3bb88aed97fa8d22042479f136">
+
+<div class="card">
+
+<h2>Price: ₹7 Crore</h2>
+
+<p>Mitron... price thoda zyada nahi ho gaya? 👀</p>
+
+<button onclick="buy()">Buy Now</button>
+
+<div class="result" id="buyResult"></div>
+
+<!-- Hidden meme audio: replay every time Buy Now is pressed. -->
+<audio id="buyNowAudio" preload="auto" playsinline
+  src="https://www.myinstants.com/media/sounds/is-sajjan-ko-kya-takleef-hai-bhai.mp3"></audio>
+
+</div>
+
+</div>
+
+<script>
+
+async function buy(){
+
+    // Play the existing page audio on every Buy Now click (no visible player).
+    const audio = document.getElementById('buyNowAudio');
+    if (audio) {
+        try {
+            audio.currentTime = 0;
+            await audio.play();
+        } catch (e) {
+            // The click itself is a user gesture; retry without blocking the buy request.
+            audio.play().catch(() => {});
+        }
+    }
+
+    const res = await fetch('/buy',{
+        method:'POST',
+        headers:{
+            'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+            product:'Modi Ka Dimag',
+            price:70000000
+        })
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+        document.getElementById('buyResult').innerText = data.flag;
+    }else{
+        document.getElementById('buyResult').innerText = data.message;
+    }
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,65 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Panel</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container">
+
+<h1>LOOK LOOK ADMIN IS HERE</h1>
+
+<img src="https://i.pinimg.com/originals/ef/a9/e1/efa9e121194b24d14d14306045def3f2.gif">
+
+<div class="card">
+
+<h2>FLAG</h2>
+
+<p><%= flag %></p>
+
+<!-- Hidden meme audio: attempt playback every time this page loads/reloads. -->
+<audio
+  id="adminMemeAudio"
+  preload="auto"
+  autoplay
+  playsinline
+  src="https://www.myinstants.com/media/sounds/modi-modi-modi-modi-kids.mp3">
+</audio>
+<script>
+  (() => {
+    const audio = document.getElementById('adminMemeAudio');
+    if (!audio) return;
+
+    // Restart from the beginning on each page load/reload.
+    audio.currentTime = 0;
+    const playAudio = () => {
+      audio.play().catch(() => {
+        // Browsers may block audible autoplay until the visitor interacts.
+        // Retry on the first interaction without showing an audio control.
+        const retry = () => {
+          audio.play().catch(() => {});
+          window.removeEventListener('pointerdown', retry);
+          window.removeEventListener('keydown', retry);
+        };
+        window.addEventListener('pointerdown', retry, { once: true });
+        window.addEventListener('keydown', retry, { once: true });
+      });
+    };
+
+    if (audio.readyState >= 2) {
+      playAudio();
+    } else {
+      audio.addEventListener('canplay', playAudio, { once: true });
+      audio.load();
+    }
+  })();
+</script>
+
+</div>
+
+</div>
+
+</body>
+</html>
