@@ -1,32 +1,12 @@
+```javascript
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const path = require('path');
-const { Redis } = require('@upstash/redis');
 
 const app = express();
 
 const JWT_SECRET = 'modi_hai_to_admin_hai';
-
-// ==================== REDIS CONFIGURATION ====================
-
-const redisUrl =
-    process.env.UPSTASH_REDIS_REST_URL ||
-    process.env.KV_REST_API_URL;
-
-const redisToken =
-    process.env.UPSTASH_REDIS_REST_TOKEN ||
-    process.env.KV_REST_API_TOKEN;
-
-const redis =
-    redisUrl && redisToken
-        ? new Redis({
-              url: redisUrl,
-              token: redisToken
-          })
-        : null;
-
-// ==================== EXPRESS CONFIGURATION ====================
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -36,7 +16,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== CTF FLAGS ====================
+// ================= FLAGS =================
 
 const FLAG1 = 'MODI{Desh_Bachalo_Guys}';
 const FLAG2 = 'MODI{BECHO_JANTA_PARTY}';
@@ -47,7 +27,13 @@ const RACE_FLAG = 'MODI{Chor_Ke_Ghar_Mein_Chori}';
 const MASTER_FLAG =
     'MASTER{Desh_Bachalo_BECHO_JANTA_Sab_Jaan_Gaye_Mann_Ki_Baat_Yogi_Rush}';
 
-// ==================== AUTH MIDDLEWARE ====================
+// ================= RACE CONDITION STATE =================
+
+// Simple in-memory state for the CTF race condition challenge.
+// On Vercel, memory is not shared across separate serverless instances.
+const laptopClaims = new Map();
+
+// ================= AUTHENTICATION =================
 
 function auth(req, res, next) {
     const token = req.cookies && req.cookies.token;
@@ -71,7 +57,7 @@ function auth(req, res, next) {
 
 app.use(auth);
 
-// ==================== HOME ====================
+// ================= HOME =================
 
 app.get('/', (req, res) => {
     res.render('index', {
@@ -79,25 +65,18 @@ app.get('/', (req, res) => {
     });
 });
 
-// ==================== LOGIN / JWT ====================
+// ================= LOGIN =================
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    if (
-        username === 'amit' &&
-        password === 'mitron@2026'
-    ) {
+    if (username === 'amit' && password === 'mitron@2026') {
         const token = jwt.sign(
             {
                 username,
                 role: 'user'
             },
-            JWT_SECRET,
-            {
-                algorithm: 'HS256',
-                expiresIn: '1h'
-            }
+            JWT_SECRET
         );
 
         res.cookie('token', token, {
@@ -122,24 +101,19 @@ app.post('/login', (req, res) => {
     });
 });
 
-// ==================== ROBOTS.TXT ====================
+// ================= ROBOTS.TXT =================
 
 app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
 
-    res.send(`User-agent: *
+    res.send(`
+User-agent: *
 Disallow: /modi
 Disallow: /admin
 `);
 });
 
-// ==================== CTF PAGES ====================
-
-app.get('/', (req, res) => {
-    res.render('index', {
-        user: req.user || null
-    });
-});
+// ================= PAGES =================
 
 app.get('/modi', (req, res) => {
     res.render('modi');
@@ -153,40 +127,20 @@ app.get('/yogi-laptop', (req, res) => {
     res.render('yogi-laptop');
 });
 
-app.get('/secure-message', (req, res) => {
-    res.render('secure-message');
-});
-
-// ==================== XSS CHALLENGE ====================
-
-// Kept compatible with the existing frontend.
-// NOTE: This endpoint exposes the flag directly.
-// A participant can request it without executing an XSS payload.
+// ================= XSS CHALLENGE =================
 
 app.get('/api/xss-flag', (req, res) => {
-    return res.json({
+    res.json({
         success: true,
         flag: XSS_FLAG
     });
 });
 
-// ==================== RACE CONDITION CHALLENGE ====================
+// ================= RACE CONDITION CHALLENGE =================
 
-// Uses shared Redis state across Vercel instances.
-//
-// Intentionally vulnerable check-then-act behavior for the isolated
-// CTF lab. Never use this pattern for real payments or inventory.
-//
-// Redis keys are scoped to the supplied challenge session ID.
-
-function raceKeys(sessionId) {
-    const prefix = `ctf:laptop:${sessionId}`;
-
-    return {
-        claimedKey: `${prefix}:claimed`,
-        inFlightKey: `${prefix}:inflight`
-    };
-}
+// Intentionally vulnerable check-then-act logic for the CTF.
+// Multiple concurrent requests can pass the initial check before
+// any request updates the counter.
 
 app.post('/api/laptop/claim', async (req, res) => {
     const sessionId = String(req.body.sessionId || '');
@@ -198,94 +152,48 @@ app.post('/api/laptop/claim', async (req, res) => {
         });
     }
 
-    if (!redis) {
-        return res.status(503).json({
+    // Step 1: Check the current claim count.
+    const current = laptopClaims.get(sessionId) || {
+        claimed: 0
+    };
+
+    if (current.claimed >= 1) {
+        return res.status(409).json({
             success: false,
+            claimed: current.claimed,
             message:
-                'Race challenge storage is not configured. Set the Upstash Redis environment variables and redeploy.'
+                'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!'
         });
     }
 
-    const { claimedKey, inFlightKey } = raceKeys(sessionId);
+    // Step 2: Artificial delay creates the race window.
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-    let entered = false;
+    // Step 3: Increment the latest count.
+    const latest = laptopClaims.get(sessionId) || {
+        claimed: 0
+    };
 
-    try {
-        // Read the shared state.
-        // The check and the following update are deliberately separate
-        // to create a race window for the training challenge.
-        const claimedValue = await redis.get(claimedKey);
-        const inFlightValue = await redis.get(inFlightKey);
+    latest.claimed += 1;
 
-        const claimed = Number(claimedValue) || 0;
-        const inFlight = Number(inFlightValue) || 0;
+    laptopClaims.set(sessionId, latest);
 
-        // Reject a new sequential claim after the previous claim finishes.
-        // Allow overlapping requests while other claims are in progress.
-        if (claimed >= 1 && inFlight === 0) {
-            return res.status(409).json({
-                success: false,
-                claimed,
-                message:
-                    'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!'
-            });
-        }
+    // Flag unlocks after more than 20 claims.
+    const solved = latest.claimed > 20;
 
-        // Track the active request in shared storage.
-        await redis.incr(inFlightKey);
-        await redis.expire(inFlightKey, 3600);
-
-        // Mark that this request successfully entered the race window.
-        entered = true;
-
-        // Intentional delay for the CTF exercise.
-        await new Promise(resolve => setTimeout(resolve, 180));
-
-        // Atomic increment on shared Redis state.
-        // Concurrent requests cannot overwrite each other's increments.
-        const newClaimed = await redis.incr(claimedKey);
-
-        // Avoid retaining challenge counters indefinitely.
-        await redis.expire(claimedKey, 3600);
-
-        const solved = newClaimed >= 20;
-
-        return res.json({
-            success: true,
-            claimed: newClaimed,
-            message: solved
-                ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!'
-                : 'Laptop claim successful! Ek hi laptop allowed hai.',
-            ...(solved ? { flag: RACE_FLAG } : {})
-        });
-    } catch (error) {
-        console.error('Race challenge error:', error);
-
-        return res.status(500).json({
-            success: false,
-            message: 'Race challenge storage error.'
-        });
-    } finally {
-        // Always decrement the in-flight counter for requests that entered.
-        if (entered) {
-            try {
-                await redis.decr(inFlightKey);
-            } catch (error) {
-                console.error(
-                    'Failed to decrement race in-flight counter:',
-                    error
-                );
-            }
-        }
-    }
+    return res.json({
+        success: true,
+        claimed: latest.claimed,
+        message: solved
+            ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!'
+            : 'Laptop claim successful! Ek hi laptop allowed hai.',
+        ...(solved ? { flag: RACE_FLAG } : {})
+    });
 });
 
-// ==================== RESET RACE CHALLENGE ====================
+// ================= RESET RACE CHALLENGE =================
 
-// Reset is for CTF maintenance and testing.
-// Do not reset while claims for the same session are running.
-
-app.post('/api/laptop/reset', async (req, res) => {
+app.post('/api/laptop/reset', (req, res) => {
     const sessionId = String(req.body.sessionId || '');
 
     if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
@@ -295,48 +203,21 @@ app.post('/api/laptop/reset', async (req, res) => {
         });
     }
 
-    if (!redis) {
-        return res.status(503).json({
-            success: false,
-            message: 'Redis storage is not configured.'
-        });
-    }
+    laptopClaims.delete(sessionId);
 
-    const { claimedKey, inFlightKey } = raceKeys(sessionId);
-
-    try {
-        const inFlightValue = await redis.get(inFlightKey);
-        const inFlight = Number(inFlightValue) || 0;
-
-        if (inFlight > 0) {
-            return res.status(409).json({
-                success: false,
-                inFlight,
-                message:
-                    'Claims are still running. Wait for them to finish, then reset.'
-            });
-        }
-
-        await redis.del(claimedKey, inFlightKey);
-
-        return res.json({
-            success: true,
-            message: 'Laptop claim counter reset for this challenge session.'
-        });
-    } catch (error) {
-        console.error('Race reset error:', error);
-
-        return res.status(500).json({
-            success: false,
-            message: 'Could not reset race challenge.'
-        });
-    }
+    return res.json({
+        success: true,
+        message: 'Laptop claim counter reset for this challenge session.'
+    });
 });
 
-// ==================== IDOR CHALLENGE ====================
+// ================= SECURE MESSAGE PAGE =================
 
-// Intentionally vulnerable object access for the isolated CTF.
-// The requested userId is not checked against the logged-in user.
+app.get('/secure-message', (req, res) => {
+    res.render('secure-message');
+});
+
+// ================= IDOR CHALLENGE =================
 
 app.get('/api/secure-message', (req, res) => {
     const userId = String(req.query.userId || '');
@@ -356,13 +237,6 @@ app.get('/api/secure-message', (req, res) => {
                 'Yogi ji, event ke arrangements confirm hain. Final update ka intezar hai.'
         },
 
-        '103': {
-            username: 'gyanesh',
-            title: 'Message for Gyanesh',
-            body:
-                'Gyanesh, meeting ke notes ready hain. Please review them.'
-        },
-
         '420': {
             username: 'gyanesh',
             title: 'Private message for Gyanesh',
@@ -377,30 +251,22 @@ app.get('/api/secure-message', (req, res) => {
     if (!message) {
         return res.status(404).json({
             success: false,
-            message:
-                'User/message not found. Check the request and userId.'
+            message: 'User/message not found. Check the request and userId.'
         });
     }
 
+    // Intentionally vulnerable IDOR challenge.
     return res.json({
         success: true,
         message
     });
 });
 
-// ==================== PRICE MANIPULATION ====================
+// ================= PRICE TAMPERING =================
 
 app.post('/buy', (req, res) => {
     const price = Number(req.body.price);
 
-    if (!Number.isFinite(price)) {
-        return res.status(400).json({
-            success: false,
-            message: 'Invalid price.'
-        });
-    }
-
-    // Intentionally vulnerable for the CTF.
     if (price === 0) {
         return res.json({
             success: true,
@@ -414,7 +280,7 @@ app.post('/buy', (req, res) => {
     });
 });
 
-// ==================== ADMIN / JWT ROLE CHALLENGE ====================
+// ================= ADMIN / JWT CHALLENGE =================
 
 app.get('/admin', (req, res) => {
     if (!req.user) {
@@ -430,7 +296,7 @@ app.get('/admin', (req, res) => {
     });
 });
 
-// ==================== MASTER FLAG SUBMISSION ====================
+// ================= SUBMIT FLAGS =================
 
 app.post('/submit-flags', (req, res) => {
     const {
@@ -441,14 +307,13 @@ app.post('/submit-flags', (req, res) => {
         flag5
     } = req.body;
 
-    const allCorrect =
+    if (
         flag1 === FLAG1 &&
         flag2 === FLAG2 &&
         flag3 === FLAG3 &&
         flag4 === XSS_FLAG &&
-        flag5 === RACE_FLAG;
-
-    if (allCorrect) {
+        flag5 === RACE_FLAG
+    ) {
         return res.json({
             success: true,
             reward: 'MITRON-CTF-WINNER-2026',
@@ -462,10 +327,12 @@ app.post('/submit-flags', (req, res) => {
     });
 });
 
-// ==================== EXPORT / LOCAL SERVER ====================
+// ================= EXPORT APP =================
 
 module.exports = app;
 
+// Run locally using npm start / node server.js.
+// Vercel imports the exported Express app.
 if (require.main === module && !process.env.VERCEL) {
     const PORT = process.env.PORT || 3000;
 
@@ -473,3 +340,4 @@ if (require.main === module && !process.env.VERCEL) {
         console.log(`Server running on http://localhost:${PORT}`);
     });
 }
+```
