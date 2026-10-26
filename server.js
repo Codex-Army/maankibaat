@@ -1,4 +1,3 @@
-
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
@@ -27,6 +26,9 @@ const MASTER_FLAG = "MASTER{Desh_Bachalo_BECHO_JANTA_Sab_Jaan_Gaye_Mann_Ki_Baat_
 const laptopClaims = new Map();
 const XSS_FLAG = 'MODI{Mann_Ki_Baat_XSS}';
 const RACE_FLAG = 'MODI{Chor_Ke_Ghar_Mein_Chori}';
+
+// Lowered threshold: flag now triggers once 20 claims land inside the race window.
+const RACE_THRESHOLD = 20;
 
 function auth(req, res, next) {
     const token = req.cookies && req.cookies.token;
@@ -128,7 +130,7 @@ app.post('/api/laptop/claim', async (req, res) => {
     const latest = laptopClaims.get(sessionId) || { claimed: 0 };
     latest.claimed += 1;
     laptopClaims.set(sessionId, latest);
-    const solved = latest.claimed > 50;
+    const solved = latest.claimed >= RACE_THRESHOLD;
     return res.json({
         success: true,
         claimed: latest.claimed,
