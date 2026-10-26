@@ -120,7 +120,7 @@ app.post('/api/laptop/claim', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Invalid challenge session.' });
     }
     const current = laptopClaims.get(sessionId) || { claimed: 0 };
-    if (current.claimed >= 20) {
+    if (current.claimed >= 1) {
         return res.status(409).json({ success: false, claimed: current.claimed, message: 'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!' });
     }
     // The artificial delay exposes the race window; do not use this pattern in production.
@@ -128,7 +128,7 @@ app.post('/api/laptop/claim', async (req, res) => {
     const latest = laptopClaims.get(sessionId) || { claimed: 0 };
     latest.claimed += 1;
     laptopClaims.set(sessionId, latest);
-    const solved = latest.claimed > 1;
+    const solved = latest.claimed > 20;
     return res.json({
         success: true,
         claimed: latest.claimed,
