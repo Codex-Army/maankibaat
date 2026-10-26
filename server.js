@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== CTF FLAGS ====================
+// ==================== FLAGS ====================
 
 const FLAG1 = 'MODI{Desh_Bachalo_Guys}';
 const FLAG2 = 'MODI{BECHO_JANTA_PARTY}';
@@ -26,8 +26,10 @@ const RACE_FLAG = 'MODI{Chor_Ke_Ghar_Mein_Chori}';
 const MASTER_FLAG =
     'MASTER{Desh_Bachalo_BECHO_JANTA_Sab_Jaan_Gaye_Mann_Ki_Baat_Yogi_Rush}';
 
-// In-memory state for the local CTF lab.
-// This is not reliable across Vercel serverless instances.
+// ==================== RACE CONDITION STATE ====================
+
+// Local CTF only. This Map is shared within one Node.js process.
+// It is NOT shared between separate Vercel serverless instances.
 const laptopClaims = new Map();
 
 // ==================== AUTH MIDDLEWARE ====================
@@ -61,7 +63,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// ==================== LOGIN / JWT CHALLENGE ====================
+// ==================== LOGIN / JWT ====================
 
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -89,7 +91,7 @@ app.post('/login', (req, res) => {
             maxAge: 60 * 60 * 1000
         });
 
-        return res.status(200).json({
+        return res.json({
             success: true,
             message: 'Login Successful'
         });
@@ -130,14 +132,13 @@ app.get('/secure-message', (req, res) => {
     res.render('secure-message');
 });
 
-// ==================== STORED XSS CHALLENGE ====================
+// ==================== XSS CHALLENGE ====================
 
-// Browser-local XSS challenge endpoint.
-//
-// IMPORTANT:
-// This endpoint deliberately exposes the flag for the training exercise.
-// Calling it directly will also return the flag, so it does not prove
-// that an XSS payload actually executed. See the note below.
+// NOTE: This endpoint exposes the flag directly.
+// A participant can call it without proving that XSS executed.
+// For a real XSS challenge, the frontend and flag-verification
+// design must be changed together.
+
 app.get('/api/xss-flag', (req, res) => {
     return res.json({
         success: true,
@@ -147,13 +148,14 @@ app.get('/api/xss-flag', (req, res) => {
 
 // ==================== RACE CONDITION CHALLENGE ====================
 
-// Intended behavior for the local CTF:
-// - One normal request must not return the flag.
-// - Concurrent requests may all pass the initial check.
-// - The flag is returned when the count reaches 20.
+// Intended CTF behavior:
+// 1. A single request must not reveal the flag.
+// 2. Overlapping requests can pass the initial check.
+// 3. Shared state is mutated after the delay.
+// 4. The flag is returned when the shared counter reaches 20.
 //
-// This intentionally uses check-then-act logic.
-// DO NOT use this pattern for real payments, inventory, or production claims.
+// This intentionally vulnerable pattern is for an isolated lab only.
+// Never use this logic for real payments, inventory, or claims.
 
 app.post('/api/laptop/claim', async (req, res) => {
     const sessionId = String(req.body.sessionId || '');
@@ -165,43 +167,62 @@ app.post('/api/laptop/claim', async (req, res) => {
         });
     }
 
-    // Step 1: Every overlapping request checks the same initial state.
-    const current = laptopClaims.get(sessionId) || { claimed: 0 };
+    // Get or create ONE shared state object for this session.
+    let state = laptopClaims.get(sessionId);
 
-    if (current.claimed >= 1) {
+    if (!state) {
+        state = {
+            claimed: 0,
+            inFlight: 0
+        };
+
+        laptopClaims.set(sessionId, state);
+    }
+
+    // If an earlier claim has completed and no requests are
+    // currently overlapping, reject another normal claim.
+    if (state.claimed >= 1 && state.inFlight === 0) {
         return res.status(409).json({
             success: false,
-            claimed: current.claimed,
+            claimed: state.claimed,
             message:
                 'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!'
         });
     }
 
-    // Step 2: Intentional race window for the CTF.
-    await new Promise(resolve => setTimeout(resolve, 180));
+    // IMPORTANT:
+    // Increment inFlight BEFORE awaiting. Other overlapping requests
+    // can pass the check while the first request is still waiting.
+    state.inFlight += 1;
 
-    // Step 3: Re-read and increment the latest shared state.
-    // Requests that passed Step 1 can all reach this point.
-    const latest = laptopClaims.get(sessionId) || { claimed: 0 };
+    try {
+        // Intentional race window for the CTF.
+        await new Promise(resolve => setTimeout(resolve, 180));
 
-    latest.claimed += 1;
+        // Mutate the SAME shared object.
+        // Within one Node.js process, each increment runs synchronously.
+        state.claimed += 1;
 
-    laptopClaims.set(sessionId, latest);
+        const solved = state.claimed >= 20;
 
-    // Flag appears at 20 successful overlapping claims, not 21.
-    const solved = latest.claimed >= 20;
-
-    return res.json({
-        success: true,
-        claimed: latest.claimed,
-        message: solved
-            ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!'
-            : 'Laptop claim successful! Ek hi laptop allowed hai.',
-        ...(solved ? { flag: RACE_FLAG } : {})
-    });
+        return res.json({
+            success: true,
+            claimed: state.claimed,
+            message: solved
+                ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!'
+                : 'Laptop claim successful! Ek hi laptop allowed hai.',
+            ...(solved ? { flag: RACE_FLAG } : {})
+        });
+    } finally {
+        state.inFlight -= 1;
+    }
 });
 
-// Reset the race challenge state for local testing.
+// ==================== RESET RACE CHALLENGE ====================
+
+// Useful for resetting the lab between tests.
+// Do not reset while requests for the same session are still running.
+
 app.post('/api/laptop/reset', (req, res) => {
     const sessionId = String(req.body.sessionId || '');
 
@@ -209,6 +230,15 @@ app.post('/api/laptop/reset', (req, res) => {
         return res.status(400).json({
             success: false,
             message: 'Invalid challenge session.'
+        });
+    }
+
+    const state = laptopClaims.get(sessionId);
+
+    if (state && state.inFlight > 0) {
+        return res.status(409).json({
+            success: false,
+            message: 'Cannot reset while claims are in progress.'
         });
     }
 
@@ -222,35 +252,34 @@ app.post('/api/laptop/reset', (req, res) => {
 
 // ==================== IDOR CHALLENGE ====================
 
-// Intentionally vulnerable for the isolated CTF.
-// The requested userId is not checked against the logged-in user.
+// Intentionally vulnerable: userId is caller-controlled and
+// there is no ownership/authorization check.
 
 app.get('/api/secure-message', (req, res) => {
     const userId = String(req.query.userId || '');
 
     const messages = {
-        // Normal message for Amit.
         '101': {
             username: 'amit',
             title: 'Message for Amit',
-            body: 'Mitron, report ka first draft ready hai. Meeting se pehle review kar lena.'
+            body:
+                'Mitron, report ka first draft ready hai. Meeting se pehle review kar lena.'
         },
 
-        // Normal message for Yogi.
         '102': {
             username: 'yogi',
             title: 'Message for Yogi',
-            body: 'Yogi ji, event ke arrangements confirm hain. Final update ka intezar hai.'
+            body:
+                'Yogi ji, event ke arrangements confirm hain. Final update ka intezar hai.'
         },
 
-        // Normal message for Gyanesh.
         '103': {
             username: 'gyanesh',
             title: 'Message for Gyanesh',
-            body: 'Gyanesh, meeting ke notes ready hain. Please review them.'
+            body:
+                'Gyanesh, meeting ke notes ready hain. Please review them.'
         },
 
-        // Private object accessible by changing the requested ID.
         '420': {
             username: 'gyanesh',
             title: 'Private message for Gyanesh',
@@ -265,7 +294,8 @@ app.get('/api/secure-message', (req, res) => {
     if (!message) {
         return res.status(404).json({
             success: false,
-            message: 'User/message not found. Check the request and userId.'
+            message:
+                'User/message not found. Check the request and userId.'
         });
     }
 
