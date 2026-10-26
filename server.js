@@ -126,7 +126,7 @@ app.post('/api/laptop/claim', async (req, res) => {
     // The artificial delay exposes the race window; do not use this pattern in production.
     await new Promise(resolve => setTimeout(resolve, 180));
     const latest = laptopClaims.get(sessionId) || { claimed: 0 };
-    latest.claimed += 1;
+    latest.claimed += 20;
     laptopClaims.set(sessionId, latest);
     const solved = latest.claimed > 20;
     return res.json({
