@@ -114,36 +114,61 @@ app.get('/api/xss-flag', (req, res) => {
 
 // Deliberately vulnerable check-then-act logic for the Race Condition lab.
 // Multiple concurrent requests can all pass the check before any increment occurs.
+
+// Race Condition challenge state
+const activeClaims = new Map();
+const laptopClaims = new Map();
+
+// Keep your existing RACE_FLAG declaration above this route.
+
 app.post('/api/laptop/claim', async (req, res) => {
     const sessionId = String(req.body.sessionId || '');
-    if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
-        return res.status(400).json({ success: false, message: 'Invalid challenge session.' });
-    }
-    const current = laptopClaims.get(sessionId) || { claimed: 0 };
-    if (current.claimed >= 1) {
-        return res.status(409).json({ success: false, claimed: current.claimed, message: 'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!' });
-    }
-    // The artificial delay exposes the race window; do not use this pattern in production.
-    await new Promise(resolve => setTimeout(resolve, 180));
-    const latest = laptopClaims.get(sessionId) || { claimed: 0 };
-    latest.claimed += 20;
-    laptopClaims.set(sessionId, latest);
-    const solved = latest.claimed > 20;
-    return res.json({
-        success: true,
-        claimed: latest.claimed,
-        message: solved ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!' : 'Laptop claim successful! Ek hi laptop allowed hai.',
-        ...(solved ? { flag: RACE_FLAG } : {})
-    });
-});
 
-app.post('/api/laptop/reset', (req, res) => {
-    const sessionId = String(req.body.sessionId || '');
     if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
-        return res.status(400).json({ success: false, message: 'Invalid challenge session.' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid challenge session.'
+        });
     }
-    laptopClaims.delete(sessionId);
-    return res.json({ success: true, message: 'Laptop claim counter reset for this challenge session.' });
+
+    // Count requests overlapping in this Node.js process.
+    const active = (activeClaims.get(sessionId) || 0) + 1;
+    activeClaims.set(sessionId, active);
+
+    // Capture the count before any request finishes.
+    const reachedTwenty = active >= 20;
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const current = laptopClaims.get(sessionId) || { claimed: 0 };
+        current.claimed += 1;
+        laptopClaims.set(sessionId, current);
+
+        if (reachedTwenty) {
+            return res.json({
+                success: true,
+                claimed: current.claimed,
+                message: 'Race condition triggered!',
+                flag: RACE_FLAG
+            });
+        }
+
+        return res.json({
+            success: true,
+            claimed: current.claimed,
+            message: 'Claim processed. 20 simultaneous requests are required.'
+        });
+
+    } finally {
+        const remaining = (activeClaims.get(sessionId) || 1) - 1;
+
+        if (remaining <= 0) {
+            activeClaims.delete(sessionId);
+        } else {
+            activeClaims.set(sessionId, remaining);
+        }
+    }
 });
 
 // Intentional IDOR lab: object access is based on a caller-controlled userId.
