@@ -2,10 +2,31 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 
 const JWT_SECRET = 'modi_hai_to_admin_hai';
+
+// ==================== REDIS CONFIGURATION ====================
+
+const redisUrl =
+    process.env.UPSTASH_REDIS_REST_URL ||
+    process.env.KV_REST_API_URL;
+
+const redisToken =
+    process.env.UPSTASH_REDIS_REST_TOKEN ||
+    process.env.KV_REST_API_TOKEN;
+
+const redis =
+    redisUrl && redisToken
+        ? new Redis({
+              url: redisUrl,
+              token: redisToken
+          })
+        : null;
+
+// ==================== EXPRESS CONFIGURATION ====================
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -15,7 +36,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==================== FLAGS ====================
+// ==================== CTF FLAGS ====================
 
 const FLAG1 = 'MODI{Desh_Bachalo_Guys}';
 const FLAG2 = 'MODI{BECHO_JANTA_PARTY}';
@@ -26,16 +47,11 @@ const RACE_FLAG = 'MODI{Chor_Ke_Ghar_Mein_Chori}';
 const MASTER_FLAG =
     'MASTER{Desh_Bachalo_BECHO_JANTA_Sab_Jaan_Gaye_Mann_Ki_Baat_Yogi_Rush}';
 
-// ==================== RACE CONDITION STATE ====================
-
-// Local CTF only. This Map is shared within one Node.js process.
-// It is NOT shared between separate Vercel serverless instances.
-const laptopClaims = new Map();
-
 // ==================== AUTH MIDDLEWARE ====================
 
 function auth(req, res, next) {
     const token = req.cookies && req.cookies.token;
+
     req.user = null;
 
     if (!token) {
@@ -68,7 +84,10 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    if (username === 'amit' && password === 'mitron@2026') {
+    if (
+        username === 'amit' &&
+        password === 'mitron@2026'
+    ) {
         const token = jwt.sign(
             {
                 username,
@@ -91,7 +110,7 @@ app.post('/login', (req, res) => {
             maxAge: 60 * 60 * 1000
         });
 
-        return res.json({
+        return res.status(200).json({
             success: true,
             message: 'Login Successful'
         });
@@ -116,6 +135,12 @@ Disallow: /admin
 
 // ==================== CTF PAGES ====================
 
+app.get('/', (req, res) => {
+    res.render('index', {
+        user: req.user || null
+    });
+});
+
 app.get('/modi', (req, res) => {
     res.render('modi');
 });
@@ -134,10 +159,9 @@ app.get('/secure-message', (req, res) => {
 
 // ==================== XSS CHALLENGE ====================
 
+// Kept compatible with the existing frontend.
 // NOTE: This endpoint exposes the flag directly.
-// A participant can call it without proving that XSS executed.
-// For a real XSS challenge, the frontend and flag-verification
-// design must be changed together.
+// A participant can request it without executing an XSS payload.
 
 app.get('/api/xss-flag', (req, res) => {
     return res.json({
@@ -148,14 +172,21 @@ app.get('/api/xss-flag', (req, res) => {
 
 // ==================== RACE CONDITION CHALLENGE ====================
 
-// Intended CTF behavior:
-// 1. A single request must not reveal the flag.
-// 2. Overlapping requests can pass the initial check.
-// 3. Shared state is mutated after the delay.
-// 4. The flag is returned when the shared counter reaches 20.
+// Uses shared Redis state across Vercel instances.
 //
-// This intentionally vulnerable pattern is for an isolated lab only.
-// Never use this logic for real payments, inventory, or claims.
+// Intentionally vulnerable check-then-act behavior for the isolated
+// CTF lab. Never use this pattern for real payments or inventory.
+//
+// Redis keys are scoped to the supplied challenge session ID.
+
+function raceKeys(sessionId) {
+    const prefix = `ctf:laptop:${sessionId}`;
+
+    return {
+        claimedKey: `${prefix}:claimed`,
+        inFlightKey: `${prefix}:inflight`
+    };
+}
 
 app.post('/api/laptop/claim', async (req, res) => {
     const sessionId = String(req.body.sessionId || '');
@@ -167,63 +198,94 @@ app.post('/api/laptop/claim', async (req, res) => {
         });
     }
 
-    // Get or create ONE shared state object for this session.
-    let state = laptopClaims.get(sessionId);
-
-    if (!state) {
-        state = {
-            claimed: 0,
-            inFlight: 0
-        };
-
-        laptopClaims.set(sessionId, state);
-    }
-
-    // If an earlier claim has completed and no requests are
-    // currently overlapping, reject another normal claim.
-    if (state.claimed >= 1 && state.inFlight === 0) {
-        return res.status(409).json({
+    if (!redis) {
+        return res.status(503).json({
             success: false,
-            claimed: state.claimed,
             message:
-                'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!'
+                'Race challenge storage is not configured. Set the Upstash Redis environment variables and redeploy.'
         });
     }
 
-    // IMPORTANT:
-    // Increment inFlight BEFORE awaiting. Other overlapping requests
-    // can pass the check while the first request is still waiting.
-    state.inFlight += 1;
+    const { claimedKey, inFlightKey } = raceKeys(sessionId);
+
+    let entered = false;
 
     try {
-        // Intentional race window for the CTF.
+        // Read the shared state.
+        // The check and the following update are deliberately separate
+        // to create a race window for the training challenge.
+        const claimedValue = await redis.get(claimedKey);
+        const inFlightValue = await redis.get(inFlightKey);
+
+        const claimed = Number(claimedValue) || 0;
+        const inFlight = Number(inFlightValue) || 0;
+
+        // Reject a new sequential claim after the previous claim finishes.
+        // Allow overlapping requests while other claims are in progress.
+        if (claimed >= 1 && inFlight === 0) {
+            return res.status(409).json({
+                success: false,
+                claimed,
+                message:
+                    'Arre Mitron! Aap pehle hi ek laptop claim kar chuke hain!'
+            });
+        }
+
+        // Track the active request in shared storage.
+        await redis.incr(inFlightKey);
+        await redis.expire(inFlightKey, 3600);
+
+        // Mark that this request successfully entered the race window.
+        entered = true;
+
+        // Intentional delay for the CTF exercise.
         await new Promise(resolve => setTimeout(resolve, 180));
 
-        // Mutate the SAME shared object.
-        // Within one Node.js process, each increment runs synchronously.
-        state.claimed += 1;
+        // Atomic increment on shared Redis state.
+        // Concurrent requests cannot overwrite each other's increments.
+        const newClaimed = await redis.incr(claimedKey);
 
-        const solved = state.claimed >= 20;
+        // Avoid retaining challenge counters indefinitely.
+        await redis.expire(claimedKey, 3600);
+
+        const solved = newClaimed >= 20;
 
         return res.json({
             success: true,
-            claimed: state.claimed,
+            claimed: newClaimed,
             message: solved
                 ? 'Arre Mitron, ek laptop lene aaye the aur dukaan khaali kar di!'
                 : 'Laptop claim successful! Ek hi laptop allowed hai.',
             ...(solved ? { flag: RACE_FLAG } : {})
         });
+    } catch (error) {
+        console.error('Race challenge error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Race challenge storage error.'
+        });
     } finally {
-        state.inFlight -= 1;
+        // Always decrement the in-flight counter for requests that entered.
+        if (entered) {
+            try {
+                await redis.decr(inFlightKey);
+            } catch (error) {
+                console.error(
+                    'Failed to decrement race in-flight counter:',
+                    error
+                );
+            }
+        }
     }
 });
 
 // ==================== RESET RACE CHALLENGE ====================
 
-// Useful for resetting the lab between tests.
-// Do not reset while requests for the same session are still running.
+// Reset is for CTF maintenance and testing.
+// Do not reset while claims for the same session are running.
 
-app.post('/api/laptop/reset', (req, res) => {
+app.post('/api/laptop/reset', async (req, res) => {
     const sessionId = String(req.body.sessionId || '');
 
     if (!/^[a-zA-Z0-9_-]{8,100}$/.test(sessionId)) {
@@ -233,27 +295,48 @@ app.post('/api/laptop/reset', (req, res) => {
         });
     }
 
-    const state = laptopClaims.get(sessionId);
-
-    if (state && state.inFlight > 0) {
-        return res.status(409).json({
+    if (!redis) {
+        return res.status(503).json({
             success: false,
-            message: 'Cannot reset while claims are in progress.'
+            message: 'Redis storage is not configured.'
         });
     }
 
-    laptopClaims.delete(sessionId);
+    const { claimedKey, inFlightKey } = raceKeys(sessionId);
 
-    return res.json({
-        success: true,
-        message: 'Laptop claim counter reset for this challenge session.'
-    });
+    try {
+        const inFlightValue = await redis.get(inFlightKey);
+        const inFlight = Number(inFlightValue) || 0;
+
+        if (inFlight > 0) {
+            return res.status(409).json({
+                success: false,
+                inFlight,
+                message:
+                    'Claims are still running. Wait for them to finish, then reset.'
+            });
+        }
+
+        await redis.del(claimedKey, inFlightKey);
+
+        return res.json({
+            success: true,
+            message: 'Laptop claim counter reset for this challenge session.'
+        });
+    } catch (error) {
+        console.error('Race reset error:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Could not reset race challenge.'
+        });
+    }
 });
 
 // ==================== IDOR CHALLENGE ====================
 
-// Intentionally vulnerable: userId is caller-controlled and
-// there is no ownership/authorization check.
+// Intentionally vulnerable object access for the isolated CTF.
+// The requested userId is not checked against the logged-in user.
 
 app.get('/api/secure-message', (req, res) => {
     const userId = String(req.query.userId || '');
@@ -317,7 +400,7 @@ app.post('/buy', (req, res) => {
         });
     }
 
-    // Intentionally vulnerable business logic for the CTF.
+    // Intentionally vulnerable for the CTF.
     if (price === 0) {
         return res.json({
             success: true,
